@@ -35,13 +35,9 @@ func ProcessFile(midiFile string) {
 	currentNote := uint8(0)
 	inNote  := false
 	deltaDrop := uint32(0)
-	// i :=  0
+
 
 	tracksReader.Do(func(ev smf.TrackEvent) {
-		// i += 1
-		// if (i > 20) {
-		// 	return
-		// }
 
 		logging.Sugar.Infow("next event",
 			"track", ev.TrackNo,
@@ -53,12 +49,10 @@ func ProcessFile(midiFile string) {
 
 		logging.Sugar.Sync()
 
-		// fmt.Printf("track %v @%vms smf ticks: %+v beat clock ticks: %+v  %s\n", ev.TrackNo, ev.AbsMicroSeconds/1000, ev.AbsTicks, ev.AbsTicks / beatClockRatio, ev.Message)
 		var _ch, _key, _vel uint8
 		switch {
 		case ev.Message.GetNoteOn(&_ch, &_key, &_vel):
 			if (!inNote) {
-				// fmt.Printf("Including noteOn %v @ %v \n", _key, ev.AbsTicks)
 				inNote = true
 				ev.Delta = ev.Delta + deltaDrop
 				deltaDrop = 0
@@ -71,7 +65,6 @@ func ProcessFile(midiFile string) {
 
 		case ev.Message.GetNoteOff(&_ch, &_key, &_vel):
 			if (inNote && currentNote == _key) {
-				// fmt.Printf("Including noteOff %v @ %v \n", _key, ev.AbsTicks)
 				ev.Delta += deltaDrop
 				deltaDrop = 0
 				currentNote = 0

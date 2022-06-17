@@ -27,7 +27,7 @@ var averageCmd = &cobra.Command{
 func init() {
 	averageCmd.Flags().StringVarP(&inMidiFile, "in-midi-file", "i", "", "input midi file to scramble (required)")
 	averageCmd.Flags().StringVarP(&outMidiFile, "out-midi-file", "o", "", "output midi file name (required)")
-	averageCmd.Flags().BoolVarP( &monophonic, "monophonic", "", false, "reduce file to monophonic")
+	averageCmd.Flags().BoolVarP( &monophonic, "monophonic", "m", false, "reduce file to monophonic")
 	averageCmd.MarkFlagRequired("in-midi-file")
 	averageCmd.MarkFlagRequired("out-midi-file")
 

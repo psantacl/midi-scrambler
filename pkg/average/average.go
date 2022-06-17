@@ -27,7 +27,7 @@ func ProcessFile(inMidiFile string, outMidiFile string, monophonic bool) {
 	bytesReader := bytes.NewReader(data)
 	tracksReader := smf.ReadTracksFrom(bytesReader)
 	ticks := tracksReader.SMF().TimeFormat.(smf.MetricTicks)
-	beatClockRatio := int64(ticks.Resolution()) / 24
+	// beatClockRatio := int64(ticks.Resolution()) / 24
 	trackCount := len(tracksReader.SMF().Tracks)
 	if trackCount != 1 {
 		panic(fmt.Sprintf("Can only process Midi files with a single track for now!. Found %s tracks", trackCount))
@@ -43,18 +43,22 @@ func ProcessFile(inMidiFile string, outMidiFile string, monophonic bool) {
 	tracksReader.Do(func(ev smf.TrackEvent) {
 		survived := false
 
-		logging.Sugar.Infow("next event",
-			"track", ev.TrackNo,
-			"ms", ev.AbsMicroSeconds,
-			"ticks", ev.AbsTicks,
-			"beat-clock ticks", ev.AbsTicks / beatClockRatio,
-			"delta", ev.Delta,
-			"message", ev.Message)
+		// logging.Sugar.Infow("next event",
+		// 	"track", ev.TrackNo,
+		// 	"ms", ev.AbsMicroSeconds,
+		// 	"ticks", ev.AbsTicks,
+		// 	"beat-clock ticks", ev.AbsTicks / beatClockRatio,
+		// 	"delta", ev.Delta,
+		// 	"message", ev.Message)
 
 		logging.Sugar.Sync()
 
 		var _ch, _key, _vel uint8
 		switch {
+
+		case !monophonic:
+			survived = true
+
 		case ev.Message.GetNoteOn(&_ch, &_key, &_vel):
 			if (!inNote) {
 				inNote = true
@@ -63,7 +67,7 @@ func ProcessFile(inMidiFile string, outMidiFile string, monophonic bool) {
 				currentNote = _key
 				survived = true
 			} else { //already in a note
-				logging.Sugar.Infow("dropping NoteOn", "delta", ev.Delta, "key", _key)
+				// logging.Sugar.Infow("dropping NoteOn", "delta", ev.Delta, "key", _key)
 				deltaDrop += ev.Delta
 			}
 
@@ -75,7 +79,7 @@ func ProcessFile(inMidiFile string, outMidiFile string, monophonic bool) {
 				inNote = false
 				survived = true
 			} else { //noteOf for a dropped note
-				logging.Sugar.Infow("dropping NoteOff", "delta", ev.Delta, "key", _key)
+				// logging.Sugar.Infow("dropping NoteOff", "delta", ev.Delta, "key", _key)
 				deltaDrop += ev.Delta
 			}
 		default: //pass all Note events

@@ -14,26 +14,8 @@ type TrackEventsPrime struct {
 	survived bool
 }
 
-func ProcessFile(inMidiFile string, outMidiFile string, monophonic bool) {
-	logging.Sugar.Infow("Average",
-		"file", inMidiFile, "monophonic", monophonic)
-	data, err := os.ReadFile(inMidiFile)
-	if err != nil {
-		logging.Sugar.Errorf("unable to read midi file '%+v'", inMidiFile)
-		panic(err)
 
-	}
-
-	bytesReader := bytes.NewReader(data)
-	tracksReader := smf.ReadTracksFrom(bytesReader)
-	ticks := tracksReader.SMF().TimeFormat.(smf.MetricTicks)
-	// beatClockRatio := int64(ticks.Resolution()) / 24
-	trackCount := len(tracksReader.SMF().Tracks)
-	if trackCount != 1 {
-		panic(fmt.Sprintf("Can only process Midi files with a single track for now!. Found %s tracks", trackCount))
-	}
-	logging.Sugar.Infof("ticks: %+v track_count: %+v", ticks.Resolution(), len(tracksReader.SMF().Tracks))
-
+func handleMonophonic(monophonic bool, tracksReader *smf.TracksReader) []TrackEventsPrime {
 	ourEvents := []TrackEventsPrime{}
 	currentNote := uint8(0)
 	inNote  := false
@@ -43,13 +25,13 @@ func ProcessFile(inMidiFile string, outMidiFile string, monophonic bool) {
 	tracksReader.Do(func(ev smf.TrackEvent) {
 		survived := false
 
-		// logging.Sugar.Infow("next event",
-		// 	"track", ev.TrackNo,
-		// 	"ms", ev.AbsMicroSeconds,
-		// 	"ticks", ev.AbsTicks,
-		// 	"beat-clock ticks", ev.AbsTicks / beatClockRatio,
-		// 	"delta", ev.Delta,
-		// 	"message", ev.Message)
+		logging.Sugar.Infow("next event",
+			"track", ev.TrackNo,
+			"ms", ev.AbsMicroSeconds,
+			"ticks", ev.AbsTicks,
+			// "beat-clock ticks", ev.AbsTicks / beatClockRatio,
+			"delta", ev.Delta,
+			"message", ev.Message)
 
 		logging.Sugar.Sync()
 
@@ -90,7 +72,31 @@ func ProcessFile(inMidiFile string, outMidiFile string, monophonic bool) {
 		ourEvents = append(ourEvents, TrackEventsPrime{TrackEvent: ev, survived: survived})
 
 	})
+	return ourEvents
+}
 
+func ProcessFile(inMidiFile string, outMidiFile string, monophonic bool) {
+	logging.Sugar.Infow("Average",
+		"file", inMidiFile, "monophonic", monophonic)
+	data, err := os.ReadFile(inMidiFile)
+	if err != nil {
+		logging.Sugar.Errorf("unable to read midi file '%+v'", inMidiFile)
+		panic(err)
+
+	}
+
+	bytesReader := bytes.NewReader(data)
+	tracksReader := smf.ReadTracksFrom(bytesReader)
+	ticks := tracksReader.SMF().TimeFormat.(smf.MetricTicks)
+	// beatClockRatio := int64(ticks.Resolution()) / 24
+	trackCount := len(tracksReader.SMF().Tracks)
+	if trackCount != 1 {
+		panic(fmt.Sprintf("Can only process Midi files with a single track for now!. Found %s tracks", trackCount))
+	}
+	logging.Sugar.Infof("ticks: %+v track_count: %+v", ticks.Resolution(), len(tracksReader.SMF().Tracks))
+
+
+	ourEvents := handleMonophonic(monophonic,  tracksReader)
 	var midiData = buildMidiOut(ourEvents, ticks.Resolution())
 
 	err = os.WriteFile(outMidiFile, midiData, 0644)

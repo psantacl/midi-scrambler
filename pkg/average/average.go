@@ -1,4 +1,4 @@
-package monophonic
+package average
 
 import (
 	"os"
@@ -14,19 +14,17 @@ type TrackEventsPrime struct {
 	survived bool
 }
 
-func ProcessFile(midiFile string) {
-	data, err := os.ReadFile(midiFile)
+func ProcessFile(inMidiFile string, outMidiFile string, monophonic bool) {
+	logging.Sugar.Infow("Average",
+		"file", inMidiFile, "monophonic", monophonic)
+	data, err := os.ReadFile(inMidiFile)
 	if err != nil {
-		logging.Sugar.Errorf("unable to read midi file '%+v'", midiFile)
+		logging.Sugar.Errorf("unable to read midi file '%+v'", inMidiFile)
 		panic(err)
 
 	}
 
-	// fmt.Println(string(data))
-
 	bytesReader := bytes.NewReader(data)
-	// fmt.Println(reflect.TypeOf(smf.ReadTracksFrom(bytes.NewReader(data))))
-	// fmt.Println(reflect.TypeOf(bytes.NewReader(data)))
 	tracksReader := smf.ReadTracksFrom(bytesReader)
 	ticks := tracksReader.SMF().TimeFormat.(smf.MetricTicks)
 	beatClockRatio := int64(ticks.Resolution()) / 24
@@ -34,7 +32,7 @@ func ProcessFile(midiFile string) {
 	if trackCount != 1 {
 		panic(fmt.Sprintf("Can only process Midi files with a single track for now!. Found %s tracks", trackCount))
 	}
-	fmt.Printf("ticks: %+v track_count: %+v\n", ticks.Resolution(), len(tracksReader.SMF().Tracks))
+	logging.Sugar.Infof("ticks: %+v track_count: %+v", ticks.Resolution(), len(tracksReader.SMF().Tracks))
 
 	ourEvents := []TrackEventsPrime{}
 	currentNote := uint8(0)
@@ -91,7 +89,7 @@ func ProcessFile(midiFile string) {
 
 	var midiData = buildMidiOut(ourEvents, ticks.Resolution())
 
-	err = os.WriteFile("chicken-out.midi", midiData, 0644)
+	err = os.WriteFile(outMidiFile, midiData, 0644)
 
 	if err != nil {
 		panic("Unable to write output midifile")

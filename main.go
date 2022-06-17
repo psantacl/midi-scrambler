@@ -10,10 +10,7 @@ import (
 func main() {
 	var logger = logging.InitLogging()
 	defer logger.Sync() // flushes buffer, if any
-	logging.Sugar.Infow("in logger",
-		// Structured context as loosely typed key-value pairs.
-		"cool", true,
-	)
+	logging.Sugar.Infow("Welcome to midi-scrambler")
 
 	cmd.RootCmd.Execute()
 	os.Exit(0)

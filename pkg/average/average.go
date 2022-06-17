@@ -75,9 +75,13 @@ func handleMonophonic(monophonic bool, tracksReader *smf.TracksReader) []TrackEv
 	return ourEvents
 }
 
-func ProcessFile(inMidiFile string, outMidiFile string, monophonic bool) {
+func ProcessFile(inMidiFile string, outMidiFile string, monophonic bool, windowSize uint64) {
 	logging.Sugar.Infow("Average",
-		"file", inMidiFile, "monophonic", monophonic)
+		"in-file", inMidiFile,
+		"out-file", outMidiFile,
+		"monophonic", monophonic,
+		"window-size", windowSize)
+
 	data, err := os.ReadFile(inMidiFile)
 	if err != nil {
 		logging.Sugar.Errorf("unable to read midi file '%+v'", inMidiFile)

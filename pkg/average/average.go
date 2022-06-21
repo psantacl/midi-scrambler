@@ -9,6 +9,7 @@ import (
 	"gitlab.com/gomidi/midi/v2/smf"
 	"com.github/psantacl/midi-scrambler/pkg/logging"
 	"math/rand"
+	"time"
 )
 
 type TrackEventsPrime struct {
@@ -44,10 +45,10 @@ func findNeighbors(windowSize uint64, ourEvents []TrackEventsPrime, targetEventI
 }
 
 
-func pickNeighor(neighbors []uint8) uint8 {
+func pickNeighor(r1 *rand.Rand, neighbors []uint8) uint8 {
 	count := len(neighbors)
 	if count > 0 {
-		return neighbors[rand.Intn(count)]
+		return neighbors[r1.Intn(count)]
 	}
 	return 0
 }
@@ -56,6 +57,8 @@ func handleAveraging(windowSize uint64, ourEvents []TrackEventsPrime) []TrackEve
 	logging.Sugar.Infow("handleAveraging", "windowSize", windowSize)
 	var noteSwitches = make(map[uint8]uint8)
 	var averagedEvents []TrackEventsPrime
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
 
 	for idx, ev := range ourEvents {
 		var _ch, _key, _vel uint8
@@ -68,7 +71,7 @@ func handleAveraging(windowSize uint64, ourEvents []TrackEventsPrime) []TrackEve
 
 		case ev.Message.GetNoteOn(&_ch, &_key, &_vel):
 			var neighbors = findNeighbors(windowSize, ourEvents, idx)
-			neighbor := pickNeighor(neighbors)
+			neighbor := pickNeighor(r1, neighbors)
 			logging.Sugar.Infow("handleAveraging noteOn",
 				"idx", idx,
 				"ev", fmt.Sprintf("%v", ev),

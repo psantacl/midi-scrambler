@@ -15,6 +15,50 @@ type TrackEventsPrime struct {
 }
 
 
+func findNeighbors(windowSize uint64, ourEvents []TrackEventsPrime, targetEventIdx int) []uint8{
+	logging.Sugar.Infow("findNeighbors", "windowSize", windowSize, "targetEventIdx",  targetEventIdx)
+	var totalDelta uint64
+	var neighbors []uint8
+	subSlice := ourEvents[(targetEventIdx + 1):]
+	for idx, ev := range subSlice  {
+		totalDelta += uint64(ev.Delta)
+		if totalDelta > windowSize {
+			break;
+		}
+		var _ch, _key, _vel uint8
+		ev := subSlice[idx]
+		if !ev.survived {
+			continue
+		}
+		if ev.Message.GetNoteOn(&_ch, &_key, &_vel) {
+			// logging.Sugar.Infof("including neighbor %v", ev)
+			// logging.Sugar.Sync()
+			neighbors = append(neighbors, _key)
+		}
+
+	}
+
+	return neighbors
+}
+
+func handleAveraging(windowSize uint64, ourEvents []TrackEventsPrime) []TrackEventsPrime {
+	logging.Sugar.Infow("handleAveraging", "windowSize", windowSize)
+	for idx, ev := range ourEvents {
+		var _ch, _key, _vel uint8
+		if !ev.survived {
+			continue
+		}
+		if ev.Message.GetNoteOn(&_ch, &_key, &_vel) {
+			// fmt.Printf("***********************************************************\n")
+			var neighbors = findNeighbors(windowSize, ourEvents, idx)
+			logging.Sugar.Infof("handleAveraging: %v %v has neighbors %v", idx, ev, neighbors)
+
+		}
+	}
+	return ourEvents
+
+}
+
 func handleMonophonic(monophonic bool, tracksReader *smf.TracksReader) []TrackEventsPrime {
 	ourEvents := []TrackEventsPrime{}
 	currentNote := uint8(0)
@@ -25,13 +69,13 @@ func handleMonophonic(monophonic bool, tracksReader *smf.TracksReader) []TrackEv
 	tracksReader.Do(func(ev smf.TrackEvent) {
 		survived := false
 
-		logging.Sugar.Infow("next event",
-			"track", ev.TrackNo,
-			"ms", ev.AbsMicroSeconds,
-			"ticks", ev.AbsTicks,
-			// "beat-clock ticks", ev.AbsTicks / beatClockRatio,
-			"delta", ev.Delta,
-			"message", ev.Message)
+		// logging.Sugar.Infow("next event",
+		// 	"track", ev.TrackNo,
+		// 	"ms", ev.AbsMicroSeconds,
+		// 	"ticks", ev.AbsTicks,
+		// 	// "beat-clock ticks", ev.AbsTicks / beatClockRatio,
+		// 	"delta", ev.Delta,
+		// 	"message", ev.Message)
 
 		logging.Sugar.Sync()
 
@@ -101,6 +145,7 @@ func ProcessFile(inMidiFile string, outMidiFile string, monophonic bool, windowS
 
 
 	ourEvents := handleMonophonic(monophonic,  tracksReader)
+	ourEvents = handleAveraging(windowSize, ourEvents)
 	var midiData = buildMidiOut(ourEvents, ticks.Resolution())
 
 	err = os.WriteFile(outMidiFile, midiData, 0644)

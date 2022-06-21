@@ -59,10 +59,8 @@ func handleAveraging(windowSize uint64, ourEvents []TrackEventsPrime) []TrackEve
 			continue
 		}
 		if ev.Message.GetNoteOn(&_ch, &_key, &_vel) {
-			// fmt.Printf("***********************************************************\n")
 			var neighbors = findNeighbors(windowSize, ourEvents, idx)
 			neighbor := pickNeighor(neighbors)
-			// logging.Sugar.Infof("handleAveraging: %v %v has neighbors %v, picking %v", idx, ev, neighbors, neighbor)
 			logging.Sugar.Infow("handleAveraging",
 				"idx", idx,
 				"ev", fmt.Sprintf("%v", ev),

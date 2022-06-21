@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"bytes"
 	// "reflect"
+	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/smf"
 	"com.github/psantacl/midi-scrambler/pkg/logging"
 	"math/rand"
@@ -53,23 +54,52 @@ func pickNeighor(neighbors []uint8) uint8 {
 
 func handleAveraging(windowSize uint64, ourEvents []TrackEventsPrime) []TrackEventsPrime {
 	logging.Sugar.Infow("handleAveraging", "windowSize", windowSize)
+	var noteSwitches = make(map[uint8]uint8)
+	var averagedEvents []TrackEventsPrime
+
 	for idx, ev := range ourEvents {
 		var _ch, _key, _vel uint8
+
 		if !ev.survived {
 			continue
 		}
-		if ev.Message.GetNoteOn(&_ch, &_key, &_vel) {
+		switch {
+		case !ev.survived:
+
+		case ev.Message.GetNoteOn(&_ch, &_key, &_vel):
 			var neighbors = findNeighbors(windowSize, ourEvents, idx)
 			neighbor := pickNeighor(neighbors)
-			logging.Sugar.Infow("handleAveraging",
+			logging.Sugar.Infow("handleAveraging noteOn",
 				"idx", idx,
 				"ev", fmt.Sprintf("%v", ev),
 				"neighbors", fmt.Sprintf("%v", neighbors),
 				"neighbor", fmt.Sprintf("%v", neighbor))
+			if neighbor != 0 {
+				//switch the pitch
+				logging.Sugar.Infof("switching pitch %v -> %v", _key, neighbor)
+				ev.Message = smf.Message(midi.NoteOn(0, neighbor, _vel))
+				noteSwitches[_key] = neighbor
 
+			}
+
+		case ev.Message.GetNoteOff(&_ch, &_key, &_vel):
+			if (noteSwitches[_key] != 0) {
+				//replace noteOff event with updated pitch
+				logging.Sugar.Infow("handleAveraging noteOff",
+					"original-pitch", _key,
+					"new-pitch", noteSwitches[_key],
+					"noteSwitches", fmt.Sprintf("%v", noteSwitches))
+
+				logging.Sugar.Infof("changing NoteOff to new pitch %v -> %v", _key, noteSwitches[_key])
+				ev.Message = smf.Message(midi.NoteOff(0, noteSwitches[_key]))
+				delete(noteSwitches, _key)
+			}
 		}
+
+		averagedEvents = append(averagedEvents, ev)
+
 	}
-	return ourEvents
+	return averagedEvents
 
 }
 

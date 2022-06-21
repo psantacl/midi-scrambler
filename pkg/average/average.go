@@ -7,6 +7,7 @@ import (
 	// "reflect"
 	"gitlab.com/gomidi/midi/v2/smf"
 	"com.github/psantacl/midi-scrambler/pkg/logging"
+	"math/rand"
 )
 
 type TrackEventsPrime struct {
@@ -41,6 +42,15 @@ func findNeighbors(windowSize uint64, ourEvents []TrackEventsPrime, targetEventI
 	return neighbors
 }
 
+
+func pickNeighor(neighbors []uint8) uint8 {
+	count := len(neighbors)
+	if count > 0 {
+		return neighbors[rand.Intn(count)]
+	}
+	return 0
+}
+
 func handleAveraging(windowSize uint64, ourEvents []TrackEventsPrime) []TrackEventsPrime {
 	logging.Sugar.Infow("handleAveraging", "windowSize", windowSize)
 	for idx, ev := range ourEvents {
@@ -51,7 +61,13 @@ func handleAveraging(windowSize uint64, ourEvents []TrackEventsPrime) []TrackEve
 		if ev.Message.GetNoteOn(&_ch, &_key, &_vel) {
 			// fmt.Printf("***********************************************************\n")
 			var neighbors = findNeighbors(windowSize, ourEvents, idx)
-			logging.Sugar.Infof("handleAveraging: %v %v has neighbors %v", idx, ev, neighbors)
+			neighbor := pickNeighor(neighbors)
+			// logging.Sugar.Infof("handleAveraging: %v %v has neighbors %v, picking %v", idx, ev, neighbors, neighbor)
+			logging.Sugar.Infow("handleAveraging",
+				"idx", idx,
+				"ev", fmt.Sprintf("%v", ev),
+				"neighbors", fmt.Sprintf("%v", neighbors),
+				"neighbor", fmt.Sprintf("%v", neighbor))
 
 		}
 	}
